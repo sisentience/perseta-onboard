@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/xFNfuKDiO/sOqD3XUaHf02HZHE/NCnl15wI7LIjcms='; style-src 'sha256-UePpxnVPGm5FBWNKdcZBUl2PZmp0yIUoKV+pExWEQSQ='; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3zCnng5HYUsgIDclIMQK0Nsj1qL8rc4qKODBXdeNWQ8='; style-src 'sha256-UePpxnVPGm5FBWNKdcZBUl2PZmp0yIUoKV+pExWEQSQ='; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <title>PersetaLab</title>
@@ -55,6 +55,7 @@ h1{margin:0 0 8px;font-size:28px;line-height:1.25;font-weight:600;overflow-wrap:
   var go = document.getElementById("go");
   var retry = document.getElementById("retry");
   var token = readToken(location.hash);
+  var latest = /^#(latest|d)$/.test(location.hash);
   var pending = null;
 
   // The invite rides in the fragment (#t=<token> or #<token>). Browsers never send
@@ -97,9 +98,17 @@ h1{margin:0 0 8px;font-size:28px;line-height:1.25;font-weight:600;overflow-wrap:
       retry.hidden = false;
       return;
     }
-    title.textContent = token ? "Opening your desk." : "Your lab's desk";
+    title.textContent = latest ? "Downloading the latest PersetaLab." : (token ? "Opening your desk." : "Your lab's desk");
     if (state !== "ready") return;
-    if (token) {
+    if (latest) {
+      var dl = base + "/downloads/latest";
+      go.href = dl;
+      go.textContent = "Download PersetaLab";
+      note.textContent = "Your download starts in a moment. If it does not, choose Download PersetaLab.";
+      note.hidden = false;
+      go.hidden = false;
+      pending = setTimeout(function () { location.replace(dl); }, 1200);
+    } else if (token) {
       var target = base + "/welcome/" + encodeURIComponent(token);
       go.href = target;
       note.textContent = "If nothing happens in a few seconds, choose Open the desk.";
