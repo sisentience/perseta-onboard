@@ -6,6 +6,10 @@ The front door for PersetaLab invites: https://go.persetalab.com/
 - `index.html` reads the invite from the link fragment (`#t=<token>`). Browsers never
   send the fragment to this host. The page loads `locator.json`, then opens the
   welcome page on the lab's desk.
+- `404.html` is the same page for invite links whose token sits in the path (the desk
+  CLI's form). GitHub Pages serves it, with status 404, for any path it does not know.
+  Prefer the fragment form: a token in the path reaches GitHub's servers, a token in
+  the fragment never leaves the browser.
 - `locator.json` names the desk's current address (`app_url`) and its support host
   (`rd_host`, `rd_port`). A scheduled publisher keeps it current.
 - `locator.sig` is the ECDSA P-256 signature (SHA-256, DER, base64 on one line) over the

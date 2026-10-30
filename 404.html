@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KGZSA6omC024HNhE9xHsDYKIoerXrwn8jJh7ilKkB70='; style-src 'sha256-UePpxnVPGm5FBWNKdcZBUl2PZmp0yIUoKV+pExWEQSQ='; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>PersetaLab</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--ink:#0f1512;--muted:#5b6862;--line:#dfe3dd;--paper:#f7f6f1;--card:#fffefb;--blue:#1d1dff;--blue-soft:#ecebff;--warn:#8a4b12;--ok:#1f6f43}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+main{max-width:560px;margin:0 auto;padding:56px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:32px 28px}
+.brand{margin:0 0 20px;color:var(--muted);font-size:14px;font-weight:600;letter-spacing:.02em}
+h1{margin:0 0 8px;font-size:28px;line-height:1.25;font-weight:600;overflow-wrap:anywhere}
+.note{margin:0 0 20px;color:var(--muted)}
+.note.warn{color:var(--warn)}
+.btn{display:inline-block;margin:4px 0 4px;padding:12px 22px;border:0;border-radius:10px;background:var(--blue);color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.btn:hover{background:#1414d6}
+.btn:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.steps{margin:28px 0 0;padding:22px 0 0;border-top:1px solid var(--line);list-style:none;counter-reset:step}
+.steps li{position:relative;margin:0 0 14px;padding-left:40px;counter-increment:step}
+.steps li:last-child{margin-bottom:0}
+.steps li::before{content:counter(step);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--blue-soft);color:var(--blue);font-size:14px;font-weight:700;line-height:26px;text-align:center}
+@media (max-width:480px){main{padding:24px 16px}.card{padding:24px 20px}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<p class="brand">PersetaLab</p>
+<div aria-live="polite">
+<h1 id="title">Your lab's desk</h1>
+<p id="note" class="note" hidden></p>
+</div>
+<a id="go" class="btn" href="./" hidden>Open the desk</a>
+<button id="retry" class="btn" type="button" hidden>Try again</button>
+<ol class="steps">
+<li>Set your password on the page that opens next.</li>
+<li>Download the installer and run it once on the lab computer. Windows asks once, so choose More info, then choose Run anyway.</li>
+<li>Sign in with your password when the PersetaLab app opens.</li>
+</ol>
+</div>
+</main>
+<script>
+(function () {
+  "use strict";
+  var title = document.getElementById("title");
+  var note = document.getElementById("note");
+  var go = document.getElementById("go");
+  var retry = document.getElementById("retry");
+  var token = pathToken(location.pathname) || readToken(location.hash);
+  var pending = null;
+
+  // GitHub Pages answers unknown paths with this page, so it also serves invite links
+  // whose token is in the path ("welcome" then the token, at the site root or under the
+  // project folder on github.io). That form wins; otherwise the fragment is read exactly
+  // as index.html reads it.
+  function pathToken(path) {
+    var parts = String(path || "").split("/").filter(function (p) { return p !== ""; });
+    var i = parts.indexOf("welcome");
+    if (i < 0 || i > 1 || parts.length !== i + 2) return "";
+    var value = parts[i + 1];
+    try { value = decodeURIComponent(value); } catch (e) { return ""; }
+    return /^[A-Za-z0-9._~-]{1,512}$/.test(value) ? value : "";
+  }
+
+  // The invite rides in the fragment (#t=<token> or #<token>). Browsers never send
+  // the fragment to this host; it only leaves this page inside the desk's own URL.
+  function readToken(hash) {
+    var raw = String(hash || "").replace(/^#/, "");
+    var value = raw;
+    if (raw.indexOf("=") !== -1) {
+      value = "";
+      var parts = raw.split("&");
+      for (var i = 0; i < parts.length; i++) {
+        var eq = parts[i].indexOf("=");
+        if (eq > 0 && parts[i].slice(0, eq) === "t") { value = parts[i].slice(eq + 1); break; }
+      }
+    }
+    try { value = decodeURIComponent(value); } catch (e) { return ""; }
+    return /^[A-Za-z0-9._~-]{8,512}$/.test(value) ? value : "";
+  }
+
+  // locator.json sits at the site root (or the project folder on github.io), not
+  // beside this page's path, which may be a deep link.
+  function siteBase() {
+    if (/\.github\.io$/i.test(location.hostname)) {
+      var first = location.pathname.split("/")[1];
+      return first ? "/" + first + "/" : "/";
+    }
+    return "/";
+  }
+
+  // app_url must be a plain https URL; its trailing slash is dropped.
+  function appBase(loc) {
+    if (!loc || typeof loc.app_url !== "string") return "";
+    var u;
+    try { u = new URL(loc.app_url); } catch (e) { return ""; }
+    if (u.protocol !== "https:" || u.username || u.password || u.search || u.hash) return "";
+    return loc.app_url.replace(/\/+$/, "");
+  }
+
+  function render(state, base) {
+    if (pending) { clearTimeout(pending); pending = null; }
+    note.hidden = true;
+    note.className = "note";
+    go.hidden = true;
+    retry.hidden = true;
+    if (state === "offline") {
+      title.textContent = "I can't reach your lab right now.";
+      note.textContent = "Try again in a minute.";
+      note.className = "note warn";
+      note.hidden = false;
+      retry.hidden = false;
+      return;
+    }
+    title.textContent = token ? "Opening your desk." : "Your lab's desk";
+    if (state !== "ready") return;
+    if (token) {
+      var target = base + "/welcome/" + encodeURIComponent(token);
+      go.href = target;
+      note.textContent = "If nothing happens in a few seconds, choose Open the desk.";
+      note.hidden = false;
+      go.hidden = false;
+      pending = setTimeout(function () { location.replace(target); }, 1500);
+    } else {
+      go.href = base + "/";
+      go.hidden = false;
+    }
+  }
+
+  function load() {
+    render("loading", "");
+    if (typeof fetch !== "function") { render("offline", ""); return; }
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var guard = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+    fetch(siteBase() + "locator.json?ts=" + Date.now(), { cache: "no-store", credentials: "omit", signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { if (!r.ok) throw new Error("locator " + r.status); return r.json(); })
+      .then(function (loc) {
+        clearTimeout(guard);
+        var base = appBase(loc);
+        if (!base) throw new Error("locator app_url");
+        render("ready", base);
+      })
+      .catch(function () { clearTimeout(guard); render("offline", ""); });
+  }
+
+  retry.addEventListener("click", load);
+  load();
+})();
+</script>
+</body>
+</html>
